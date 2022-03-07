@@ -1,0 +1,21 @@
+Why might an auto-approval rule for subscriptions be considered insecure? 
+It is because any picos can establish subscriptions and there are some that we might not want to allow them to do it.
+
+Can you put a sensor pico in more than one sensor management pico (i.e. can it have subscriptions to more than one sensor management pico)? 
+Yes, one pico can have multiple subscriptions to other management and vice versa
+
+Imagine I have sensor types besides temperature sensors (e.g. pressure, humidity, air quality, etc.). How would you properly manage collections of sensors that include heterogeneous sensor types? 
+We can still use the subscription to manage them. We can just distinguish the type whenever we go through the subscription and do corresponding actions.
+
+Describe how you'd use the techniques from this lesson to create collections of temperature sensors in particular rooms or areas of a building. For example, I would still have the sensor management pico, but might have collections for each floor in a building.
+I would have sensor management to be above each building level pico and each building level pico can have subscription to multiple sensor picos.
+
+Can a sensor pico belong to more than one collection? After the modifications of this lab, if a sensor belonged to more than one collection and had a threshold violation, what would happen? 
+Yes, it can. Whenever a threshold is violated, it would send the violation event to whoever has subscription with it.
+
+When you moved threshold violation notifications from the sensor to the management ruleset, did you add the rules to an existing ruleset or create a new one? Why? 
+I created a threshold_violation rule in manage_sensors to receive the violation event sent from the sensor pico.
+It is because the manage_sensors needs to receive violation event so I add that rule in it.
+
+When you moved threshold violation notifications from the sensor to the management ruleset, did you add only one rule or more than one rule to achieve this end? Which rules did you add and why (i.e. justify the architectural decisions did you made)?
+I only added one that is threshold_notification. It is because the manage_sensors needs to receive the violation and send the message accordingly.
