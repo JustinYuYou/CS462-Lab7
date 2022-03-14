@@ -2,6 +2,7 @@ ruleset wovyn_base {
    meta {
       use module sensor_profile
       use module io.picolabs.subscription alias subs
+      use module temperature_store
       shares message
    }
 
@@ -46,20 +47,19 @@ ruleset wovyn_base {
       })
    }
 
-
-   // // Step 1.
-   // rule send_eci {
-   //    select when wrangler ruleset_installed
-   //       where event:attr("rids") >< meta:rid
-   //    pre {
-   //       parent_eci = wrangler:parent_eci()
-   //       wellKnown_eci = subs:wellKnown_Rx(){"id"}
-   //    }
-   //    event:send({"eci":parent_eci,
-   //    "domain": "sensor", 
-   //    "type": "identify",
-   //    "attrs": {
-   //      "wellKnown_eci": wellKnown_eci
-   //    }})
-   // }
+   rule listen_report{
+      select when wovyn report
+      pre {
+         cid = event:attrs{"cid"}
+         most_recent_temp = temperature_store:current_temp()
+      }
+      event:send({
+         "eci": subs:established().filter(function(x){x{"Rx"} == meta:eci}).head(){"Tx"},
+         "domain":"sensor", "name":"send_back_report",
+         "attrs": {
+            "cid": cid,
+            "most_recent_temp": most_recent_temp,
+         }
+      })
+   }
 }

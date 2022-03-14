@@ -1,6 +1,6 @@
 ruleset manage_sensors {
    meta {
-      shares sensors, all_sensors_temperatures
+      shares sensors, all_sensors_temperatures, latest_reports
       use module io.picolabs.wrangler alias wrangler
       use module twilio
       with
@@ -21,6 +21,11 @@ ruleset manage_sensors {
             wrangler:picoQuery(tx,"temperature_store","temperatures");
          })
       }
+
+      latest_reports = function() {
+         ent:reports.filter(function(v,k){k >= ent:current - 5}) 
+      }
+
    }
 
    rule intialization {
@@ -28,6 +33,10 @@ ruleset manage_sensors {
       fired {
          ent:sensors := {}
          ent:wellKnown_ecis := []
+         ent:reports := {}
+         ent:cid := 0
+
+         ent:current := 0
       }
    }
 
@@ -225,6 +234,50 @@ ruleset manage_sensors {
         raise wrangler event "child_deletion_request"
           attributes {"eci": eci_to_delete};
         clear ent:sensors{deleted_sensor_name}
+      }
+   }
+
+   rule request_temperature_report {
+      select when sensor query_report
+         foreach subs:established() setting(sub,i)
+
+      
+      if sub{"Tx_role"} == "sensor" then 
+         event:send({
+            "eci": sub{"Tx"}, 
+            "domain":"wovyn", "name":"report",
+            "attrs": {
+              "cid": ent:cid
+         }})
+
+      always {
+         ent:counter := ent:counter.defaultsTo(0) + 1 if sub{"Tx_role"} == "sensor"
+         ent:reports{ent:cid} := {
+            "responding": 0,
+            "temperature_sensors": ent:counter,
+            "temperatures": []
+         } if sub{"Tx_role"} == "sensor"
+
+         ent:cid := ent:cid + 1 on final
+         ent:counter := 0 on final
+         ent:current := ent:current + 1 on final
+      }
+   }
+
+   rule retrieve_sensor_current_temp {
+      select when sensor send_back_report
+
+      pre {
+         eci = meta:eci // This is the one that send it back
+         cid = event:attrs{"cid"}
+         most_recent_temp =  event:attrs{"most_recent_temp"}     
+      }
+      always {
+         ent:reports{[cid, "temperatures"]} := ent:reports{[cid, "temperatures"]}.append({
+            "eci": eci,
+            "most_recent_temp": most_recent_temp
+         })
+         ent:reports{[cid, "responding"]} := ent:reports{[cid, "responding"]}+1
       }
    }
 }
