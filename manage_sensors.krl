@@ -2,11 +2,6 @@ ruleset manage_sensors {
    meta {
       shares sensors, all_sensors_temperatures, latest_reports
       use module io.picolabs.wrangler alias wrangler
-      use module twilio
-      with
-         sid = meta:rulesetConfig{"sid"}
-         authToken = meta:rulesetConfig{"authToken"}
-         fromNumber = "+18305803542"
       use module io.picolabs.subscription alias subs
    }
 
@@ -60,7 +55,7 @@ ruleset manage_sensors {
    // 2.
    rule create_child {
       select when wrangler new_child_created
-         foreach ["temperature_store", "twilio","sensor_profile","wovyn_emitter", "wovyn_base"] setting(rs,i)
+         foreach ["temperature_store","sensor_profile","wovyn_emitter", "wovyn_base"] setting(rs,i)
       
       pre {
          sensor_name = event:attr("name")
@@ -165,14 +160,6 @@ ruleset manage_sensors {
       }   
    }
 
-   rule threshold_notification {
-      select when sensor threshold_violation
-      pre {
-         sms_number = event:attr("sms_number")
-      }
-      twilio:sendMessage(sms_number)
-   }
-
    rule introduce_external_sensor {
       select when sensor connect_external_sensor 
       pre {
@@ -196,29 +183,6 @@ ruleset manage_sensors {
             }
          } , host=otherSystemHostName)
    }
-
-   // Step 2.
-   // rule get_notified_child_rulset_installed {
-   //    select when sensor identify
-   //       wellKnown_eci re#(.+)#
-   //       setting(wellKnown_eci)
-      
-   //    always {
-   //       raise sensor event "new_subscription_request"
-   //          attributes { "other_wellKnown_eci": wellKnown_eci }
-   //    }
-   // }
-
-   // // Step 3.
-   // rule make_a_subscription {
-   //    select when sensor new_subscription_request  
-      
-   //    pre {
-   //       other_wellKnown_eci = event:attr("other_wellKnown_eci")
-   //    } 
-
-
-   // }
 
    rule delete_sensor {
       select when sensor unneeded_sensor
@@ -279,5 +243,9 @@ ruleset manage_sensors {
          })
          ent:reports{[cid, "responding"]} := ent:reports{[cid, "responding"]}+1
       }
+   }
+
+   rule reset_childrent_states {
+      select when sensor reset_states
    }
 }

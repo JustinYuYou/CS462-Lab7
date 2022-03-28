@@ -1,15 +1,7 @@
-Can a sensor be in more than one collection based on the code you wrote? Why or why not? What are the implications of a sensor being in more than one collection? 
-Yes, it can be in more than one collection since we are using subscription to communicate. One sensor can have more than one subscriptions. 
-When one sensor is in more than one collections, it means it will give the report back to whichever collections it belongs to.
-
-How could you ensure that only certain picos can raise an event that causes a temperature report to be generated? 
-We can set a condition for certain subscription of the pico to raise the event to generate the temperature report.
-
-How do the debug logs show that your scatter-gather system worked?
-We check the correlation id on the debug logs.
-
-How can you know a report is done and all the sensors that are going to respond have reported? 
-We use a counter to count how many picos have responded. If it equals to the amount we expectd, it means all of them have reported.
-
-Given your answer above, how would you recover if the number of responding sensors is less than the total number of sensors? 
-I can have another rule to check if the corresponding is not equal to the desired, I will resend the request to the one that hasn't sent the report back.
+This lab uses a vector clock (Links to an external site.) algorithm to create unique message IDs based on a sequence number. Could we replace the sequence number with a timestamp? What are the advantages and disadvantages of such an approach?
+Are the temperature messages in order? Why or why not? If not, what could you do to fix this?
+How did you avoid looping (sending messages back to someone who already has it)? Why was the unique ID helpful?
+The propagation algorithm sleeps for n seconds between each iteration. What are the trade-offs between a low and high value for n.
+Did new messages eventually end on all the nodes that were connected? Were the messages displayed in the same order on each node? Why or why not?
+Why does temporarily disconnecting a node from the network not result in permanent gaps in the messages seen at that node?
+Describe, in a paragraph or two, how you could use the basic scheme implemented here to add failure detection to the system using a reachability table.
