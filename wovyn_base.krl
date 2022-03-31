@@ -89,7 +89,7 @@ ruleset wovyn_base {
       select when wake heartbeat
       always {
          schedule gossip event "heartbeat"
-         repeat <<  0/10 * * * * * >> attributes {} setting(id);
+         repeat <<  0/5 * * * * * >> attributes {} setting(id);
          ent:schedule_id := id
       }
    }
