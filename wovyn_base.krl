@@ -1,8 +1,8 @@
 ruleset wovyn_base {
    meta {
-      use module sensor_profile
       use module io.picolabs.subscription alias subs
       use module temperature_store
+      shares global_state, private_state, get_my_seen, get_my_unique_id, get_cron
    }
 
    global {
@@ -18,6 +18,18 @@ ruleset wovyn_base {
             v.keys().map((function(inner_v){inner_v.split(":")[1].as("Number")})).sort("ciremun").head()
           }))
       }
+
+      get_my_unique_id = function() {
+         ent:unique_id
+      }
+
+      get_temperature = function() {
+         ent:temperatures
+      }
+      
+      get_cron = function() {
+         ent:cron
+      }
    }
 
    rule intialization {
@@ -27,43 +39,61 @@ ruleset wovyn_base {
          ent:sequence_num := 0
          ent:global_state := {}
          ent:private_state := {}
+         ent:schedule_id := ""
+         ent:cron := <<  0/10 * * * * * >>
       }
    }
 
-   rule process_heartbeat {
-      select when wovyn heartbeat where event:attrs{"genericThing"} 
-      fired {
-         raise wovyn event "new_temperature_reading"
-            attributes {
-               "temperature": event:attrs{"genericThing"}{"data"}{"temperature"}[0]{"temperatureF"},
-               "timestamp": event:time
-            } 
-      }
-   }
+   // rule process_heartbeat {
+   //    select when wovyn heartbeat where event:attrs{"genericThing"} 
+   //    fired {
+   //       raise wovyn event "new_temperature_reading"
+   //          attributes {
+   //             "temperature": event:attrs{"genericThing"}{"data"}{"temperature"}[0]{"temperatureF"},
+   //             "timestamp": event:time
+   //          } 
+   //    }
+   // }
    rule collect_temperatures {
       select when wovyn new_temperature_reading
       pre {
          message_id = ent:unique_id + ":" + ent:sequence_num.as("String")
       }
       always {
-         ent:temperatures := ent:temperatures.append({"temperature": event:attrs{"temperature"}, "timestamp": event:attrs{"timestamp"}})
+         ent:temperatures := ent:temperatures.append({"temperature": event:attrs{"temperature"}, "timestamp": event:time})
          ent:global_state{[ent:unique_id, message_id]} := {
             "MessageID": message_id,
             "SensorID": ent:unique_id,
             "Temperature": event:attrs{"temperature"},
-            "Timestamp": event:attrs{"timestamp"}
+            "Timestamp": event:time
          }
          ent:sequence_num := ent:sequence_num + 1
       }
    }
 
+   rule end_schedule {
+      select when end heartbeat
+      schedule:remove(ent:schedule_id)
+   }
+
+   // rule change_schedule {
+   //    select when change get_cron
+   //    always {
+   //       ent:cron := event:attrs{"cron"}
+   //       raise end event "heartbeat"
+   //       raise wake event "heartbeat"
+   //    }
+   // }
+
    rule start_schedule {
       select when wake heartbeat
       always {
          schedule gossip event "heartbeat"
-         repeat << * * * * * >> attributes {} setting(id);
+         repeat <<  0/10 * * * * * >> attributes {} setting(id);
+         ent:schedule_id := id
       }
    }
+   
 
    rule gossip {
       select when gossip heartbeat
@@ -93,7 +123,7 @@ ruleset wovyn_base {
          // Find which message to send 
          other_pico_has_seen = ent:private_state{receiving_tx}
          longer_sequence = my_seen.filter(function(seq_num, sensor_id){
-            other_pico_seen{sensor_id}.defaultsTo(-1) < seq_num
+            other_pico_has_seen{sensor_id}.defaultsTo(-1) < seq_num
          }) // a map of sensor_id to num_info(sequnece_num)
          message_sender = longer_sequence.keys().head()
          seq = other_pico_has_seen{message_sender}.defaultsTo(-1) + 1
@@ -151,6 +181,15 @@ ruleset wovyn_base {
       }
       always {
          ent:private_state{tx_channel} := seen_message
+      }
+   }
+
+   rule remove_all_state {
+      select when gossip remove_state
+      always {
+         ent:sequence_num := 0
+         ent:global_state := {}
+         ent:private_state := {}      
       }
    }
 }

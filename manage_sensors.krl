@@ -245,7 +245,33 @@ ruleset manage_sensors {
       }
    }
 
-   rule reset_childrent_states {
-      select when sensor reset_states
+   rule start_all_heartbeat {
+      select when start all_heartbeat
+         foreach subs:established() setting(sub,i)
+      event:send({
+         "eci": sub{"Tx"}, 
+         "domain":"wake", "name":"heartbeat",
+      })
    }
+
+   rule end_all_heartbeat {
+      select when end all_heartbeat
+         foreach subs:established() setting(sub,i)
+      event:send({
+         "eci": sub{"Tx"}, 
+         "domain":"end", "name":"heartbeat",
+      })
+   }
+
+   // rule change_cron {
+   //    select when change cron
+   //       foreach subs:established() setting(sub,i)
+   //    event:send({
+   //       "eci": sub{"Tx"}, 
+   //       "domain":"end", "name":"heartbeat",
+   //       "attrs": {
+   //          "cron": event:attrs{"cron"}
+   //       }
+   //    })
+   // }
 }
